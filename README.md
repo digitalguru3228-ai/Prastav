@@ -130,3 +130,8 @@ public/
 ## 8. Demo-data disclaimer
 
 The included names, proposals, amounts, dates, analytics and user counts are sample data for frontend demonstration only. No real users or approvals are represented. Connect the backend and validate workflow permissions before using real information.
+
+
+## Supabase proposal workflow integration
+
+See [INTEGRATION_NOTES.md](./INTEGRATION_NOTES.md) for the connected request, draft, submission, and approver workflow scope and the remaining demo-only areas.

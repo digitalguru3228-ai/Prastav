@@ -35,6 +35,18 @@ export default function ProtectedRoute({ allowedRoles, children }) {
     );
   }
 
+  const accountStatus = String(profile.status || "active").toLowerCase();
+  if (accountStatus !== "active" && accountStatus !== "approved") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f7fb] px-5">
+        <div className="max-w-lg rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">Account awaiting activation</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Your account status is {accountStatus}. Please contact the Prastav administrator for access.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (allowedRoles && !allowedRoles.includes(profile.role)) {
     return <Navigate to={getHomeForRole(profile.role)} replace />;
   }
