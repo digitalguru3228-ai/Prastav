@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
-import { X, UploadCloud, Save, Send } from "lucide-react";
+import { X, UploadCloud, Save, Send, FileText } from "lucide-react";
 import { useApp } from "../context/AppContext";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
 
 export default function RequestModal({ onClose, onSaveDraft, onSubmit }) {
   const { categories, loading: appLoading } = useApp();
   const [form, setForm] = useState({
     title: "", categoryId: "", amount: "", description: "",
   });
-  const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -20,6 +28,29 @@ export default function RequestModal({ onClose, onSaveDraft, onSubmit }) {
   const change = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
     setError("");
+  };
+
+  const chooseFile = (event) => {
+    const selected = event.target.files?.[0] || null;
+    setError("");
+
+    if (!selected) {
+      setFile(null);
+      return;
+    }
+    if (!ACCEPTED_TYPES.includes(selected.type)) {
+      setError("Choose a PDF, JPG, PNG or WEBP document.");
+      event.target.value = "";
+      setFile(null);
+      return;
+    }
+    if (selected.size <= 0 || selected.size > MAX_FILE_SIZE) {
+      setError("Document must be between 1 byte and 10 MB.");
+      event.target.value = "";
+      setFile(null);
+      return;
+    }
+    setFile(selected);
   };
 
   const validate = () => {
@@ -45,13 +76,11 @@ export default function RequestModal({ onClose, onSaveDraft, onSubmit }) {
       const payload = {
         ...form,
         amount: Number(form.amount),
-        fileName,
+        file,
+        fileName: file?.name || "",
       };
-      if (submitAfterSave) {
-        await onSubmit(payload);
-      } else {
-        await onSaveDraft(payload);
-      }
+      if (submitAfterSave) await onSubmit(payload);
+      else await onSaveDraft(payload);
     } catch (err) {
       setError(err.message || "Unable to save this proposal.");
     } finally {
@@ -106,20 +135,23 @@ export default function RequestModal({ onClose, onSaveDraft, onSubmit }) {
           </div>
 
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 hover:border-blue-400">
-            <UploadCloud className="text-blue-700" size={21}/>
+            <UploadCloud className="shrink-0 text-blue-700" size={21}/>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-slate-700">Supporting document</span>
-              <span className="block truncate text-xs text-slate-400">{fileName || "Choose a file (upload integration is not enabled yet)"}</span>
+              <span className="block text-sm font-semibold text-slate-700">Supporting document (optional)</span>
+              <span className="block truncate text-xs text-slate-500">{file?.name || "PDF, JPG, PNG or WEBP · maximum 10 MB"}</span>
+              {file && <span className="mt-1 block text-[11px] text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB · OCR text will be extracted for your review</span>}
             </span>
-            <input type="file" className="hidden" disabled={busy} onChange={(event) => setFileName(event.target.files?.[0]?.name || "")}/>
+            {file && <FileText size={18} className="text-emerald-600"/>}
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" className="hidden" disabled={busy} onChange={chooseFile}/>
           </label>
 
+          <p className="text-xs leading-5 text-slate-500">OCR is an assistance feature. Always review extracted text; it does not approve or reject a proposal. English OCR is enabled in this version.</p>
           {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
 
           <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-4">
             <button type="button" onClick={onClose} disabled={busy} className="btn-secondary">Cancel</button>
             <button type="button" onClick={() => save(false)} disabled={busy || appLoading || !categories.length} className="btn-secondary">
-              <Save size={16}/>{busy ? "Saving..." : "Save draft"}
+              <Save size={16}/>{busy ? "Processing..." : "Save draft"}
             </button>
             <button type="button" onClick={() => save(true)} disabled={busy || appLoading || !categories.length} className="btn-primary">
               <Send size={16}/>{busy ? "Processing..." : "Submit proposal"}

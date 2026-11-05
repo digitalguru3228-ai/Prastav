@@ -8,6 +8,7 @@ import RequestModal from "../components/RequestModal";
 import RequestDetails from "../components/RequestDetails";
 import { useApp } from "../context/AppContext";
 import { money } from "../data/mockData";
+import { uploadProposalDocument } from "../utils/proposalDocuments";
 
 export default function EmployeeDashboard({ page = "overview" }) {
   const { requests, currentUser, loading, error, createDraft, submitRequest, refreshRequests } = useApp();
@@ -32,19 +33,37 @@ export default function EmployeeDashboard({ page = "overview" }) {
   const approved = mine.filter((request) => request.status === "Approved").length;
 
   const saveDraft = async (data) => {
-    await createDraft(data);
+    const { file, ...draftData } = data;
+    const requestId = await createDraft(draftData);
+    if (!requestId) {
+      throw new Error("Draft was saved, but the database did not return its ID.");
+    }
+
+    if (file) {
+      await uploadProposalDocument(requestId, file);
+    }
+
     setShowModal(false);
     await refreshRequests();
     navigate("/employee/proposals");
   };
 
   const createAndSubmit = async (data) => {
-    const requestId = await createDraft(data);
+    const { file, ...draftData } = data;
+    const requestId = await createDraft(draftData);
     if (!requestId) {
       throw new Error("Draft was saved, but the database did not return its ID. Refresh your proposals before submitting.");
     }
+
+    // A document, when selected, is uploaded and OCR is saved before
+    // the proposal enters the existing approval workflow.
+    if (file) {
+      await uploadProposalDocument(requestId, file);
+    }
+
     await submitRequest(requestId);
     setShowModal(false);
+    await refreshRequests();
     navigate("/employee/proposals");
   };
 
